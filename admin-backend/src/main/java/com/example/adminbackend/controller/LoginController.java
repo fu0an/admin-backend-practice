@@ -1,5 +1,6 @@
 package com.example.adminbackend.controller;
 
+import com.example.adminbackend.annotation.Log;
 import com.example.adminbackend.common.BusinessException;
 import com.example.adminbackend.common.Result;
 import com.example.adminbackend.common.ResultCodeEnum;
@@ -22,6 +23,7 @@ public class LoginController {
     private UserService userService;
 
     // 登录接口：前端传 username 和 password
+    @Log("用户登录")
     @PostMapping("/login")
     public Result login(@RequestBody User user) {
         User loginUser = userService.login(user.getUsername(), user.getPassword());
@@ -41,6 +43,7 @@ public class LoginController {
     }
 
     // 获取用户信息（前端登录后自动调用）
+    @Log("获取用户信息")
     @GetMapping("/info")
     public Result getInfo(@RequestHeader("X-Token") String token) {
         // 1. 校验 token 是否有效
@@ -62,6 +65,7 @@ public class LoginController {
     }
 
     // 登出接口
+    @Log("用户登出")
     @PostMapping("/logout")
     public Result logout() {
         return Result.success("登出成功");

@@ -7,5 +7,16 @@ spring:
     url: jdbc:mysql://localhost:3306/my_admin_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: boot
     password: 123456
+  data:
+    redis:
+      host: localhost   # Redis 服务器地址
+      port: 6379        # Redis 端口
+      database: 0
+  cache:
+    type: redis       # 指定用 Redis 作为缓存
+    redis:
+      time-to-live: 600000   # 缓存过期时间 10 分钟（单位毫秒）
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印 SQL 日志，方便观察缓存是否生效

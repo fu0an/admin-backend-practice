@@ -8,4 +8,5 @@ public interface UserService extends IService<User> {
     User login(String username, String password);
     // 新增用户
     boolean addUser(User user);
+
 }
