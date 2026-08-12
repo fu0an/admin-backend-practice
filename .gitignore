@@ -4,8 +4,9 @@
 out/
 # Maven 打包产物
 target/
-# 数据库本地文件
+# 数据库本地文件（init_rbac.sql 为项目初始化脚本，需提交）
 *.sql
+!init_rbac.sql
 # 本地配置文件
 application-dev.yml
 application-dev.properties

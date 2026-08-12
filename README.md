@@ -94,10 +94,14 @@ JDK 17 或 21、Maven 3.9+、MySQL 8.0+、Redis 5.0+、Node 16+
 ### 1. 初始化数据库
 
 ```bash
-mysql -uboot -p123456 < init_rbac.sql
+mysql -uboot -p123456 --default-character-set=utf8mb4 < init_rbac.sql
 ```
 
 数据库 `my_admin_db`，默认账号 `boot` / `123456`，可按需修改 `admin-backend/src/main/resources/application.yml`。
+
+> **注意**：`init_rbac.sql` 为 UTF-8 编码，导入时**必须**加 `--default-character-set=utf8mb4`，否则中文数据会报 `ERROR 1406 (22001) Data too long`。
+> 若提示 `mysql 不是内部或外部命令`，说明 mysql 不在 PATH 中，请使用完整路径，例如 `"D:\MySQL\MySQL Server 8.0\bin\mysql.exe" -uboot -p123456 --default-character-set=utf8mb4 < init_rbac.sql`。
+> 若提示 `Access denied`，说明本机没有 `boot` 用户，需先用 root 创建该用户并授权（或改用 root 连接，同时修改 `admin-backend/src/main/resources/application.yml` 中的数据库账号密码）。
 
 ### 2. 启动后端
 
