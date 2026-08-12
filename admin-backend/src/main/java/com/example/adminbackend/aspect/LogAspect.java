@@ -1,5 +1,10 @@
 package com.example.adminbackend.aspect;
 
+import com.example.adminbackend.context.LoginUserContext;
+import com.example.adminbackend.entity.SysOperLog;
+import com.example.adminbackend.mapper.SysOperLogMapper;
+import com.example.adminbackend.util.IpUtil;
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -21,6 +26,9 @@ public class LogAspect {
 
     private static final Logger log = LoggerFactory.getLogger(LogAspect.class);
 
+    @Resource
+    private SysOperLogMapper sysOperLogMapper;
+
     @Pointcut("@annotation(com.example.adminbackend.annotation.Log)")
     public void logPointcut() {
     }
@@ -41,7 +49,7 @@ public class LogAspect {
         String requestUrl = request.getRequestURL().toString();
         String requestMethod = request.getMethod();
         Object[] args = joinPoint.getArgs();
-        String requestParams = Arrays.toString(args);
+        String requestParams = args.length == 0 ? "" : Arrays.toString(args);
 
         log.info("========== 开始执行操作 ==========");
         log.info("操作: {}", operation);
@@ -51,15 +59,60 @@ public class LogAspect {
         log.info("方法名: {}", methodName);
         log.info("请求参数: {}", requestParams);
 
-        Object result = joinPoint.proceed();
+        SysOperLog operLog = new SysOperLog();
+        operLog.setTitle(operation);
+        operLog.setMethod(className + "." + methodName);
+        operLog.setRequestMethod(requestMethod);
+        operLog.setOperName(getOperName());
+        operLog.setOperUrl(requestUrl);
+        operLog.setOperIp(IpUtil.getIpAddr(request));
+        operLog.setOperParam(truncate(requestParams, 1900));
+
+        Object result;
+        try {
+            result = joinPoint.proceed();
+            operLog.setStatus(1);
+            operLog.setJsonResult(truncate(String.valueOf(result), 1900));
+        } catch (Throwable e) {
+            operLog.setStatus(0);
+            operLog.setErrorMsg(truncate(e.getMessage(), 1900));
+            throw e;
+        } finally {
+            saveLog(operLog);
+        }
 
         long endTime = System.currentTimeMillis();
         long executeTime = endTime - startTime;
-
         log.info("返回结果: {}", result);
         log.info("执行时间: {} ms", executeTime);
         log.info("========== 操作执行完毕 ==========");
 
         return result;
+    }
+
+    private String getOperName() {
+        try {
+            com.example.adminbackend.dto.LoginUser loginUser = LoginUserContext.get();
+            if (loginUser != null) {
+                return loginUser.getUsername();
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    private void saveLog(SysOperLog operLog) {
+        try {
+            sysOperLogMapper.insert(operLog);
+        } catch (Exception e) {
+            log.warn("操作日志落库失败: {}", e.getMessage());
+        }
+    }
+
+    private String truncate(String str, int maxLength) {
+        if (str == null || str.length() <= maxLength) {
+            return str;
+        }
+        return str.substring(0, maxLength);
     }
 }

@@ -12,6 +12,7 @@ public enum ResultCodeEnum {
     LOGIN_ERROR(201, "账号或密码错误"),
     TOKEN_INVALID(202, "登录已过期，请重新登录"),
     NO_LOGIN(203, "请先登录"),
+    NO_PERMISSION(403, "没有操作权限"),
 
     // 业务异常
     PARAM_ERROR(301, "参数错误"),

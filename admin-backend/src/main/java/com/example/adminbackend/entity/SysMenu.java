@@ -8,21 +8,26 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
-@TableName("sys_user")
-public class User implements Serializable {
+@TableName("sys_menu")
+public class SysMenu implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String username;
-    private String nickname;
-    private String avatar;
-    private String password;
+    private Long parentId;
+    private String menuName;
+    private String path;
+    private String component;
+    private String perms;
+    private String icon;
+    private String menuType;
+    private Integer sort;
+    private Integer visible;
     private Integer status;
     private LocalDateTime createTime;
-    private LocalDateTime updateTime;
 
     @TableField(exist = false)
-    private List<Long> roleIds;
+    private List<SysMenu> children = new ArrayList<>();
 }

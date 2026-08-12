@@ -1,73 +1,126 @@
-# Admin 后台管理系统（后端）
+# 企业权限管理系统（RBAC + 公告管理）
 
 ## 项目介绍
-基于 SpringBoot + MyBatis-Plus 开发的前后端分离后台管理后端服务，
-实现 JWT 无状态登录认证、BCrypt 密码加密、用户管理、全局异常处理、跨域配置、
-Redis 缓存优化、AOP 日志记录等功能，适配 Vue 前端访客/登录双模式业务，符合企业后端开发规范。
+前后端分离的企业后台管理系统，内置完整 **RBAC（用户-角色-菜单）三级权限模型**，并附带
+**公告管理**业务模块。后端基于 Spring Boot 3 + MyBatis-Plus，前端基于 vue-element-admin。
+
+面向软件开发学习用途，权限设计可完整讲通，并支持 Docker 一键部署。
 
 ## 技术栈
-- 核心框架：SpringBoot 3.5.14
-- ORM 框架：MyBatis-Plus 3.5.14
-- 数据库：MySQL 8.0+
-- 缓存方案：Redis + Spring Cache
-- 日志记录：Spring AOP
-- 认证方案：JWT（遵循 RFC 7518 安全规范）
-- 密码加密：BCrypt
-- 构建工具：Maven
-- JDK 版本：17
+- 后端：Spring Boot 3.5.14 / MyBatis-Plus 3.5.14 / MySQL 8.0 / Redis / JWT / BCrypt / Spring AOP
+- 前端：Vue 2 + Element UI + vue-element-admin（RBAC 路由动态加载 + 按钮级权限指令）
+- 构建：Maven 3.9+ / Node 16+ / Docker + docker-compose
 
-## 环境要求
-1. JDK 17 / JDK 21
-2. MySQL 8.0 及以上
-3. Redis 5.0 及以上（默认端口 6379）
-4. 网络正常（用于前端页面访问）
+## 系统功能
+| 模块 | 功能 |
+|---|---|
+| 登录认证 | JWT 无状态登录、BCrypt 密码加密、Redis 会话缓存、登出失效 |
+| 用户管理 | 分页/搜索、新增/编辑/删除、状态启停、分配角色、重置密码 |
+| 角色管理 | 分页/搜索、新增/编辑/删除、角色-菜单分配 |
+| 菜单管理 | 目录/菜单/按钮三级树、权限标识（perms）管理 |
+| 操作日志 | @Log 注解 + AOP 自动落库、分页/搜索/清空 |
+| 公告管理 | 公告 CRUD、发布/下线、置顶、浏览量统计、Redis 列表缓存 |
 
-## 部署&启动方式
+## RBAC 权限模型
 
-### 方式一：Jar 包启动
-1. 确保本地 MySQL 服务已启动
-2. 确保本地 Redis 服务已启动（默认端口 6379）
-3. 执行数据库脚本 `sys_user.sql`，创建库、表及测试数据
-4. 打开 CMD / 终端，进入 jar 包所在目录，执行命令：
-```bash
-java -jar admin-backend.jar
+### 表结构（`init_rbac.sql`）
 ```
-5. 服务默认端口：8080
+sys_user        用户表（username/nickname/avatar/password/status）
+sys_role        角色表（role_name/role_key/status）
+sys_menu        菜单表（parent_id/menu_name/path/component/perms/menu_type/icon）
+sys_user_role   用户-角色 关联表
+sys_role_menu   角色-菜单 关联表
+sys_oper_log    操作日志表
+biz_announcement 公告表（业务模块）
+```
 
-### 方式二：IDEA 源码启动
-1. 确保本地 MySQL 服务已启动
-2. 确保本地 Redis 服务已启动（默认端口 6379）
-3. 导入 Maven 项目
-4. 修改 `src/main/resources/application.yml` 中的数据库连接信息
-5. 运行主启动类 `AdminBackendApplication.java`
+### 认证与授权流程
+```
+前端登录 ──▶ /user/login 校验密码 ──▶ 生成 JWT ──▶ 构建 LoginUser(角色+权限) 缓存到 Redis
+       ──▶ 后续请求带 X-Token ──▶ JwtAuthInterceptor:
+             ① 校验 JWT 解析 userId
+             ② 从 Redis 读登录用户信息（用户/角色/权限）
+             ③ 校验 @RequirePermission 注解声明的权限标识
+             ④ 写入 LoginUserContext（ThreadLocal）
+角色/权限变更 ──▶ 清除该用户 Redis 缓存，下次请求自动重建
+```
 
-## 访问地址
-- 接口文档：http://localhost:8080/api/doc.html
-- 后端接口基础地址：http://localhost:8080/api
+### 权限控制点
+- **前端**：路由 `meta.roles` 控制菜单可见性；`v-perm="'system:user:add'"` 指令控制按钮可见性
+- **后端**：`@RequirePermission("system:user:add")` 注解 + 拦截器强校验（前端隐藏不是安全边界，后端才是）
+- **超级管理员**：角色标识为 `admin` 时自动拥有全部权限
 
-## 测试账号
-- 用户名：admin
-- 密码：111111
+## 目录结构
+```
+admin/
+├── admin-backend/            # 后端
+│   └── src/main/java/com/example/adminbackend/
+│       ├── annotation/       # @Log、@RequirePermission 注解
+│       ├── aspect/           # 日志切面（落库）
+│       ├── config/           # CORS / Redis / MyBatis-Plus / 拦截器注册
+│       ├── context/          # 登录用户上下文 ThreadLocal
+│       ├── controller/       # 登录 / 用户 / 角色 / 菜单 / 日志 / 公告
+│       ├── dto/              # LoginUser
+│       ├── entity/           # 实体
+│       ├── interceptor/      # JWT 认证+授权拦截器
+│       ├── mapper/ service/ util/
+├── vue-element-admin/        # 前端
+│   └── src/
+│       ├── api/              # user/role/menu/announcement/log
+│       ├── directive/perm/   # v-perm 按钮级权限指令
+│       ├── store/            # user（roles+permissions）
+│       ├── router/           # 动态路由 + meta.roles
+│       └── views/            # system/{user,role,menu,log} / announcement
+├── init_rbac.sql             # 建库建表 + 种子数据
+├── docker-compose.yml        # MySQL/Redis/后端/前端 一键部署
+```
 
-## 核心功能
+## 本地运行
 
-### 基础功能
-- **登录认证**：JWT 签发 & 校验 Token，规避密钥安全问题
-- **密码安全**：BCrypt 加盐加密，数据库密文存储
-- **用户管理**：用户分页查询、新增用户（自动加密密码）
-- **项目规范**：统一返回结果、全局异常捕获、全局跨域配置
-- **工程化**：Maven 打包，可独立部署运行
+### 环境要求
+JDK 17/21、Maven 3.9+、MySQL 8.0+、Redis 5.0+、Node 16+
 
-### Redis 缓存功能
-- **缓存配置**：基于 Spring Cache 抽象层，使用 Redis 作为缓存存储
-- **缓存策略**：用户查询结果缓存 10 分钟，提升查询性能
-- **缓存更新**：用户新增/修改时自动清除相关缓存，保证数据一致性
-- **序列化优化**：使用 Jackson2JsonRedisSerializer 实现对象序列化
-- **性能提升**：减少数据库访问次数，提升系统响应速度
+### 1. 初始化数据库
+```bash
+mysql -uboot -p123456 < init_rbac.sql
+```
+（可按需修改 `admin-backend/src/main/resources/application.yml` 中的数据库/Redis 连接）
 
-### AOP 日志功能
-- **自定义注解**：使用 @Log 注解标记需要记录日志的方法
-- **切面编程**：基于 Spring AOP 实现日志的统一处理
-- **日志记录**：自动记录方法名称、请求参数、执行时间、返回结果
-- **业务审计**：支持用户操作的完整追踪和审计
-- **低侵入性**：无需修改业务代码，通过注解即可开启日志记录
+### 2. 启动后端
+```bash
+cd admin-backend
+mvn spring-boot:run
+# 或 IDEA 运行 AdminBackendApplication，端口 8080，context-path: /api
+```
+
+### 3. 启动前端
+```bash
+cd vue-element-admin
+npm install
+npm run dev
+# 访问 http://localhost:9527
+```
+前端 `src/utils/request.js` 中 baseURL 为 `http://localhost:8080/api`，由后端全局 CORS 放行，无需代理配置。
+
+## Docker 一键部署
+```bash
+docker-compose up -d --build
+```
+- 前端：http://localhost:9527
+- 后端：http://localhost:8080/api
+- 首次启动自动执行 `init_rbac.sql` 初始化数据
+- 可自行在 nginx.conf 中开启 `/api` 反代以隐藏后端端口
+
+## 演示账号（密码统一 123456）
+| 账号 | 角色 | 可见菜单 | 权限说明 |
+|---|---|---|---|
+| admin | 超级管理员 | 全部（公告+系统管理） | 全部权限 |
+| editor | 公告编辑 | 公告管理 | 可发布/编辑/置顶公告，不可删除，无系统管理 |
+| zhangsan | 普通员工 | 公告管理 | 仅查看公告，无任何操作按钮 |
+
+## 核心亮点（面试可讲）
+1. **RBAC 三级模型**：用户-角色-菜单，前端路由 + 按钮级权限 + 后端注解三层联动
+2. **JWT 无状态认证 + Redis 会话**：登录即构建用户上下文缓存，改权限实时生效（缓存失效策略）
+3. **后端强校验**：明确"前端隐藏≠安全"，权限判断落在拦截器
+4. **操作日志落库**：AOP 切面统一采集操作人/IP/参数/结果，业务代码零侵入
+5. **缓存一致性**：Spring Cache + Redis，公告列表/用户信息缓存，变更即时失效

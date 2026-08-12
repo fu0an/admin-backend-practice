@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: rbac-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: my_admin_db
+      MYSQL_USER: boot
+      MYSQL_PASSWORD: "123456"
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init_rbac.sql:/docker-entrypoint-initdb.d/init_rbac.sql:ro
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uboot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    container_name: rbac-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./admin-backend
+    container_name: rbac-backend
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: boot
+      DB_PASSWORD: "123456"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    build: ./vue-element-admin
+    container_name: rbac-frontend
+    ports:
+      - "9527:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:

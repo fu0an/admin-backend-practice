@@ -11,18 +11,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-@TableName("sys_user")
-public class User implements Serializable {
+@TableName("sys_role")
+public class SysRole implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String username;
-    private String nickname;
-    private String avatar;
-    private String password;
+    private String roleName;
+    private String roleKey;
+    private Integer sort;
     private Integer status;
+    private String remark;
     private LocalDateTime createTime;
-    private LocalDateTime updateTime;
 
     @TableField(exist = false)
-    private List<Long> roleIds;
+    private List<Long> menuIds;
 }
