@@ -22,3 +22,5 @@ release/
 *.exe
 *.zip
 target/
+# 前端构建产物（嵌入后端的静态资源，由 npm run build:prod 生成）
+admin-backend/src/main/resources/static/

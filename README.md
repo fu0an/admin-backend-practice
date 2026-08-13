@@ -12,7 +12,6 @@
 - [技术栈](#技术栈)
 - [权限设计](#权限设计)
 - [快速开始](#快速开始)
-- [Windows 桌面版（独立窗口）](#windows-桌面版独立窗口)
 - [Docker 部署](#docker-部署)
 - [演示账号](#演示账号)
 - [项目结构](#项目结构)
@@ -29,7 +28,6 @@
 - **操作日志**：AOP 切面自动记录操作人、IP、参数、结果
 - **公告管理**：公告 CRUD、发布/下线、置顶、浏览量统计
 - **统一返回与异常**：全局异常处理、统一响应格式
-- **桌面封装**：提供独立窗口桌面版（WebView2 壳程序），双击即用，无需浏览器
 
 ## 技术栈
 
@@ -54,7 +52,6 @@
 | vue-element-admin | 后台管理模板 |
 | Vue Router | 路由与权限过滤 |
 | Vuex | 状态管理 |
-| WebView2（桌面版） | 独立窗口壳程序 |
 
 ## 权限设计
 
@@ -126,49 +123,6 @@ npm run dev
 
 > 若使用 Node 17+ 运行 `npm run dev` 报 OpenSSL 相关错误，请设置环境变量：`set NODE_OPTIONS=--openssl-legacy-provider`。
 
-## Windows 桌面版（独立窗口）
-
-项目可打包为**独立桌面窗口**应用（无需浏览器），适用于公司内部快速分发。
-
-### 运行方式
-
-在 `release/` 目录下：
-
-- **一键启动**：双击 `启动系统.bat`（自动拉起后端并打开独立窗口）
-- **直接启动**：双击 `RBACWindow\RBACWindow.exe`（独立窗口壳程序）
-- **绿色版**：解压 `RBACAdmin-绿色版.zip` 后同上操作
-- **安装版**：运行 `RBACAdmin-1.0.exe` 安装（含开始菜单/桌面快捷方式）
-
-### 桌面版特性
-
-- 独立窗口加载 `http://localhost:8080`，无地址栏/右键菜单，更接近原生应用
-- 启动时自动拉起后端 `RBACAdmin.exe`，等待服务就绪后加载页面
-- 关闭窗口自动结束后端进程，无残留
-- 需本机已安装 MySQL、Redis 并完成 `init_rbac.sql` 初始化
-
-### 重新打包
-
-```bash
-# 构建后端 fat jar
-cd admin-backend
-mvn clean package -DskipTests
-
-# 生成绿色版（app-image）
-jpackage --type app-image --name RBACAdmin \
-  --input admin-backend/target --main-jar admin-backend-0.0.1-SNAPSHOT.jar \
-  --main-class org.springframework.boot.loader.launch.JarLauncher \
-  --dest release --java-options "-Dfile.encoding=UTF-8"
-
-# 生成安装包（需 WiX Toolset，设置 wix_light / wix_candle 环境变量）
-jpackage --type exe --name RBACAdmin \
-  --input admin-backend/target --main-jar admin-backend-0.0.1-SNAPSHOT.jar \
-  --main-class org.springframework.boot.loader.launch.JarLauncher \
-  --dest release --java-options "-Dfile.encoding=UTF-8" \
-  --win-menu --win-shortcut
-```
-
-> 前端页面已内嵌于后端 `src/main/resources/static`（构建前先执行 `npm run build:prod`）。`RBACWindow` 壳程序由 C# + WebView2 编译，位于 `release/RBACWindow`。
-
 ## Docker 部署
 
 ```bash
@@ -207,7 +161,7 @@ admin/
 │       │   ├── service/           # 业务层
 │       │   └── util/              # 工具类
 │       └── resources/
-│           ├── static/            # 前端构建产物（嵌入部署）
+│           ├── static/            # 前端构建产物（由 npm run build:prod 生成，不入库）
 │           └── application.yml    # 配置文件
 ├── vue-element-admin/             # 前端应用
 │   └── src/
@@ -216,11 +170,6 @@ admin/
 │       ├── router/                # 路由配置
 │       ├── store/                 # 状态管理
 │       └── views/                 # 页面
-├── release/                       # 打包产物
-│   ├── RBACAdmin/                 # 后端绿色版（含运行时）
-│   ├── RBACWindow/                # 独立窗口壳程序
-│   ├── RBACAdmin-1.0.exe          # 安装包
-│   └── 启动系统.bat               # 一键启动脚本
 ├── init_rbac.sql                  # 数据库脚本
 └── docker-compose.yml             # 容器编排
 ```
