@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 
 @RestController
-@RequestMapping("/announcement")
+@RequestMapping("/api/announcement")
 public class AnnouncementController {
 
     @Resource

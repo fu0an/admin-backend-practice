@@ -12,6 +12,7 @@
 - [技术栈](#技术栈)
 - [权限设计](#权限设计)
 - [快速开始](#快速开始)
+- [Windows 桌面版（独立窗口）](#windows-桌面版独立窗口)
 - [Docker 部署](#docker-部署)
 - [演示账号](#演示账号)
 - [项目结构](#项目结构)
@@ -22,13 +23,13 @@
 
 ## 功能特性
 
-- **登录认证**：JWT 无状态登录、登出、Redis 会话缓存、BCrypt 密码加密
+- **登录认证**：JWT 无状态登录、登出、Redis 会话缓存、BCrypt 密码加密；进入即登录页（内部系统）
 - **用户管理**：分页搜索、新增/编辑/删除、状态启停、分配角色、重置密码
 - **角色管理**：分页搜索、新增/编辑/删除、角色-菜单分配
-- **菜单管理**：目录/菜单/按钮三级树形结构，权限标识（perms）管理
 - **操作日志**：AOP 切面自动记录操作人、IP、参数、结果
-- **公告管理**：公告 CRUD、发布/下线、置顶、浏览量统计、Redis 列表缓存
+- **公告管理**：公告 CRUD、发布/下线、置顶、浏览量统计
 - **统一返回与异常**：全局异常处理、统一响应格式
+- **桌面封装**：提供独立窗口桌面版（WebView2 壳程序），双击即用，无需浏览器
 
 ## 技术栈
 
@@ -53,6 +54,7 @@
 | vue-element-admin | 后台管理模板 |
 | Vue Router | 路由与权限过滤 |
 | Vuex | 状态管理 |
+| WebView2（桌面版） | 独立窗口壳程序 |
 
 ## 权限设计
 
@@ -110,7 +112,7 @@ cd admin-backend
 mvn spring-boot:run
 ```
 
-服务地址 `http://localhost:8080/api`。
+后端需先启动本地 Redis（默认 `localhost:6379`）。服务地址 `http://localhost:8080`。
 
 ### 3. 启动前端
 
@@ -120,7 +122,52 @@ npm install
 npm run dev
 ```
 
-浏览器访问 `http://localhost:9527`。前端接口地址配置在 `src/utils/request.js`。
+浏览器访问 `http://localhost:9527`。前端接口地址由 `VUE_APP_BASE_API` 控制（`.env.development` 为 `/api`，开发模式下经 `vue.config.js` 代理到后端 8080 端口）。
+
+> 若使用 Node 17+ 运行 `npm run dev` 报 OpenSSL 相关错误，请设置环境变量：`set NODE_OPTIONS=--openssl-legacy-provider`。
+
+## Windows 桌面版（独立窗口）
+
+项目可打包为**独立桌面窗口**应用（无需浏览器），适用于公司内部快速分发。
+
+### 运行方式
+
+在 `release/` 目录下：
+
+- **一键启动**：双击 `启动系统.bat`（自动拉起后端并打开独立窗口）
+- **直接启动**：双击 `RBACWindow\RBACWindow.exe`（独立窗口壳程序）
+- **绿色版**：解压 `RBACAdmin-绿色版.zip` 后同上操作
+- **安装版**：运行 `RBACAdmin-1.0.exe` 安装（含开始菜单/桌面快捷方式）
+
+### 桌面版特性
+
+- 独立窗口加载 `http://localhost:8080`，无地址栏/右键菜单，更接近原生应用
+- 启动时自动拉起后端 `RBACAdmin.exe`，等待服务就绪后加载页面
+- 关闭窗口自动结束后端进程，无残留
+- 需本机已安装 MySQL、Redis 并完成 `init_rbac.sql` 初始化
+
+### 重新打包
+
+```bash
+# 构建后端 fat jar
+cd admin-backend
+mvn clean package -DskipTests
+
+# 生成绿色版（app-image）
+jpackage --type app-image --name RBACAdmin \
+  --input admin-backend/target --main-jar admin-backend-0.0.1-SNAPSHOT.jar \
+  --main-class org.springframework.boot.loader.launch.JarLauncher \
+  --dest release --java-options "-Dfile.encoding=UTF-8"
+
+# 生成安装包（需 WiX Toolset，设置 wix_light / wix_candle 环境变量）
+jpackage --type exe --name RBACAdmin \
+  --input admin-backend/target --main-jar admin-backend-0.0.1-SNAPSHOT.jar \
+  --main-class org.springframework.boot.loader.launch.JarLauncher \
+  --dest release --java-options "-Dfile.encoding=UTF-8" \
+  --win-menu --win-shortcut
+```
+
+> 前端页面已内嵌于后端 `src/main/resources/static`（构建前先执行 `npm run build:prod`）。`RBACWindow` 壳程序由 C# + WebView2 编译，位于 `release/RBACWindow`。
 
 ## Docker 部署
 
@@ -129,8 +176,10 @@ docker-compose up -d --build
 ```
 
 - 前端：`http://localhost:9527`
-- 后端：`http://localhost:8080/api`
+- 后端：`http://localhost:8080`
 - 首次启动自动执行 `init_rbac.sql` 初始化数据
+
+Docker 模式下前端经 nginx 将 `/api` 反向代理到后端容器，接口访问同本地一致。
 
 ## 演示账号
 
@@ -145,17 +194,21 @@ docker-compose up -d --build
 ```
 admin/
 ├── admin-backend/                 # 后端服务
-│   └── src/main/java/com/example/adminbackend/
-│       ├── annotation/            # @Log、@RequirePermission
-│       ├── aspect/                # 日志切面
-│       ├── common/                # 统一返回、全局异常
-│       ├── config/                # CORS、Redis、拦截器配置
-│       ├── controller/            # 接口层
-│       ├── entity/                # 实体
-│       ├── interceptor/           # JWT 认证拦截器
-│       ├── mapper/                # 数据访问层
-│       ├── service/               # 业务层
-│       └── util/                  # 工具类
+│   └── src/main/
+│       ├── java/com/example/adminbackend/
+│       │   ├── annotation/        # @Log、@RequirePermission
+│       │   ├── aspect/            # 日志切面
+│       │   ├── common/            # 统一返回、全局异常
+│       │   ├── config/            # CORS、Redis、拦截器配置
+│       │   ├── controller/        # 接口层（统一 /api 前缀）
+│       │   ├── entity/            # 实体
+│       │   ├── interceptor/       # JWT 认证拦截器
+│       │   ├── mapper/            # 数据访问层
+│       │   ├── service/           # 业务层
+│       │   └── util/              # 工具类
+│       └── resources/
+│           ├── static/            # 前端构建产物（嵌入部署）
+│           └── application.yml    # 配置文件
 ├── vue-element-admin/             # 前端应用
 │   └── src/
 │       ├── api/                   # 接口封装
@@ -163,6 +216,11 @@ admin/
 │       ├── router/                # 路由配置
 │       ├── store/                 # 状态管理
 │       └── views/                 # 页面
+├── release/                       # 打包产物
+│   ├── RBACAdmin/                 # 后端绿色版（含运行时）
+│   ├── RBACWindow/                # 独立窗口壳程序
+│   ├── RBACAdmin-1.0.exe          # 安装包
+│   └── 启动系统.bat               # 一键启动脚本
 ├── init_rbac.sql                  # 数据库脚本
 └── docker-compose.yml             # 容器编排
 ```
@@ -188,10 +246,7 @@ Base URL：`http://localhost:8080/api`，除登录/登出外均需请求头 `X-T
 | 角色 | PUT | `/system/role` | 修改角色 |
 | 角色 | DELETE | `/system/role/{id}` | 删除角色 |
 | 角色 | PUT | `/system/role/assignMenu` | 分配菜单 |
-| 菜单 | GET | `/system/menu/tree` | 菜单树 |
-| 菜单 | POST | `/system/menu` | 新增菜单 |
-| 菜单 | PUT | `/system/menu` | 修改菜单 |
-| 菜单 | DELETE | `/system/menu/{id}` | 删除菜单 |
+| 菜单 | GET | `/system/menu/tree` | 菜单树（供角色分配菜单使用） |
 | 日志 | GET | `/system/log/page` | 日志分页查询 |
 | 日志 | DELETE | `/system/log/clear` | 清空日志 |
 | 公告 | GET | `/announcement/page` | 公告分页查询 |

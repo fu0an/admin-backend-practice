@@ -17,3 +17,8 @@ logs/
 .DS_Store
 # 环境变量
 .env
+# 打包输出目录，不要上传
+release/
+*.exe
+*.zip
+target/

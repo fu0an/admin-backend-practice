@@ -1,6 +1,4 @@
 server:
-  servlet:
-    context-path: /api
   port: ${SERVER_PORT:8080}
 
 spring:

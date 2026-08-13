@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/system/role")
+@RequestMapping("/api/system/role")
 public class RoleController {
 
     @Resource

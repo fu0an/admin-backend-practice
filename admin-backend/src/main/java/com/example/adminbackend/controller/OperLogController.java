@@ -12,7 +12,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/system/log")
+@RequestMapping("/api/system/log")
 public class OperLogController {
 
     @Resource

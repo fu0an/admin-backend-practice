@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/system/user")
+@RequestMapping("/api/system/user")
 public class UserController {
 
     @Resource
